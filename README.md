@@ -1,61 +1,71 @@
-## DISCLAIMER!! this project is all built with AI, It's not a serious project and i don't plan to keep it updated. use it at your own risk
+# ⚠️ AI-Generated Project Disclaimer
+
+> **This project was entirely generated with AI assistance.** It is an experimental proof-of-concept and is not intended for production use. The author does not plan to maintain or update it regularly. Use at your own risk. If you encounter issues, contributions are welcome, but don't expect official support.
+
+---
 
 # awww-walls-sctk
 
-A native picker UI for `awww`, replacing `awww-walls-rofi.sh`'s
-rofi + ImageMagick front end with a `smithay-client-toolkit` layer-shell
-surface and in-process `image-rs` thumbnailing.
+A native Wayland wallpaper picker UI for [`awww`](https://github.com/awww-cli/awww), replacing the original `rofi` + ImageMagick frontend with a smooth, animated layer-shell surface powered by `smithay-client-toolkit` and in-process `image-rs` thumbnailing.
 
-**Scope, on purpose:** only the picker UI changes. The backend is
-untouched:
+## ✨ Features
 
-- Still shells out to the `awww` CLI with the same flags
-  (`awww img -t center --transition-fps 60 ...` for the default namespace,
-  `awww img --transition-fps 60 -n overview ...` for the blurred one).
-- Still expects `mountain.jpg` / `mountain-b.jpg` naming for the
-  default/blurred pair.
-- Still reads from `$HOME/Pictures/Wallpapers` and caches thumbnails in
-  `$XDG_CACHE_HOME/awww-walls-thumbs` (or `~/.cache/awww-walls-thumbs`) —
-  same directory and filenames the bash script used, so the cache is
-  shared and both tools can run side by side during the transition.
+- **Native Wayland UI** – Layer-shell overlay surface (`Layer::Overlay`) with smooth animations
+- **Smooth Animations** – Cubic-bezier scale+fade "pop" on open/close (configurable)
+- **Fluid Scrolling** – Momentum-based scrolling with exponential smoothing for mouse wheel, touchpad, and keyboard navigation
+- **Sliding Highlight Ring** – Animated selection indicator that glides between thumbnails
+- **Search Bar** – Real-time filename filtering with case-insensitive substring matching
+- **Parallel Thumbnail Generation** – In-process `image` crate with `rayon` for fast, parallel thumbnail caching
+- **Theming Support** – Customizable via `~/.config/awww-walls-sctk/theme.conf`
+- **Shared Cache** – Uses the same thumbnail cache as the original bash script, so both tools can coexist
 
-## Controls
+## 📦 Requirements
 
-- Type to search/filter by filename. Backspace deletes a character;
-  Escape clears the search first, and only cancels the picker on a second
-  press with an empty query.
-- Click a thumbnail to apply it.
-- Left/Right arrow keys move a keyboard selection cursor, shown by the
-  same sliding highlight ring mouse hover uses; Enter applies whatever's
-  currently highlighted. Moving the mouse re-syncs the keyboard cursor to
-  whatever you're hovering. Holding an arrow key repeats after an initial
-  delay, same as held keys anywhere else in the desktop.
-- Mouse wheel / touchpad two-finger scroll pans the ribbon when there are
-  more wallpapers than fit in the window. Scrolling coasts briefly after
-  you stop instead of snapping dead. Arrow-key navigation auto-scrolls to
-  keep the selection in view, with the same easing as everything else —
-  no teleporting.
-- Escape (with an empty search) or closing the surface cancels.
-- Opening and picking/cancelling both animate — a cubic-bezier
-  scale+fade "pop", not a flat opacity fade — and the picker doesn't
-  return a result until the closing animation finishes.
+- A Wayland compositor with `wlr-layer-shell` support (e.g., **niri**, Sway, Hyprland)
+- `awww` CLI installed and configured
+- `libxkbcommon-dev` (Debian/Ubuntu) or `libxkbcommon` (Arch)
+- Rust toolchain
 
-## Theming
+## 🛠️ Build
 
-Drop a `~/.config/awww-walls-sctk/theme.conf` file to override the
-defaults. Plain `key = value` lines; `[section]` lines are purely
-cosmetic grouping (ignored, not real nesting); `#` for comments. Missing
-file or missing keys fall back to the built-in look (Catppuccin Mocha,
-same base sizing as the original rofi theme) on a per-field basis. A bad
-line just warns to stderr and keeps that one field's default -- it won't
-refuse to start over a typo.
+```sh
+cargo build --release
+install -Dm755 target/release/awww-walls-sctk ~/.local/bin/awww-walls-sctk
+```
+
+> **Important:** Always use `--release`. Debug builds may stutter during scrolling due to unoptimized per-pixel software rendering into `wl_shm` buffers.
+
+## 🎮 Controls
+
+| Input | Action |
+|-------|--------|
+| **Type** | Filter wallpapers by filename (case-insensitive) |
+| **Backspace** | Delete last character in search |
+| **Escape** | Clear search (first press), cancel picker (second press) |
+| **Click thumbnail** | Apply selected wallpaper |
+| **← / → arrows** | Move selection cursor |
+| **Enter** | Apply highlighted wallpaper |
+| **Mouse wheel / Touchpad scroll** | Pan through thumbnails |
+| **Close window** | Cancel without changes |
+
+### Navigation Details
+
+- Keyboard arrow keys auto-scroll to keep selection visible
+- Holding an arrow key repeats after an initial delay (400ms, then every 40ms)
+- Scrolling has momentum that decays over time (configurable half-life)
+- Mouse hover re-syncs the keyboard selection cursor
+- All motion eases smoothly—nothing snaps
+
+## 🎨 Theming
+
+Create `~/.config/awww-walls-sctk/theme.conf` to customize appearance and behavior:
 
 ```ini
 # ~/.config/awww-walls-sctk/theme.conf
 
 [layout]
 window_width      = 1179
-window_height     = 370   # icon-row height; the search bar adds on top of this
+window_height     = 370   # icon-row height; search bar adds on top
 icon_size         = 350
 spacing           = 15
 padding           = 10
@@ -74,142 +84,106 @@ dim_opacity              = 190         # 0-255, alpha of non-selected thumbnails
 [animation]
 open_duration_ms      = 200   # open animation length
 close_duration_ms     = 160   # close animation length
-open_close_scale_from = 0.92  # panel scales up/down from this factor (1.0 = no scale, fade only)
-open_close_curve       = 0.42, 0.0, 0.58, 1.0  # cubic-bezier(x1,y1,x2,y2), CSS convention -- default is "ease-in-out"
-scroll_smoothing        = 14  # 1/sec, how fast scroll position chases input (higher = snappier)
+open_close_scale_from = 0.92  # panel scales from this factor (1.0 = no scale, fade only)
+open_close_curve       = 0.42, 0.0, 0.58, 1.0  # cubic-bezier(x1,y1,x2,y2)
+scroll_smoothing        = 14  # 1/sec, how fast scroll position chases input
 highlight_smoothing     = 20  # 1/sec, how fast the ring slides between cells
 momentum_half_life_ms   = 120 # touchpad/wheel coast decay
 wheel_step               = 60 # px scrolled per mouse-wheel notch
 ```
 
-`open_close_curve` accepts any four comma-separated numbers as CSS-style
-`cubic-bezier(x1, y1, x2, y2)` control points. Some familiar presets, if
-you want to swap the default "ease-in-out" for something else:
+### Cubic-Bezier Presets
 
-| name | curve |
-|---|---|
+The `open_close_curve` accepts CSS-style `cubic-bezier(x1, y1, x2, y2)` values:
+
+| Name | Curve |
+|------|-------|
 | ease-in-out (default) | `0.42, 0.0, 0.58, 1.0` |
 | ease | `0.25, 0.1, 0.25, 1.0` |
 | ease-in | `0.42, 0.0, 1.0, 1.0` |
 | ease-out | `0.0, 0.0, 0.58, 1.0` |
 | linear | `0.0, 0.0, 1.0, 1.0` |
 
-No file? No `--theme` flag, no rebuild required — it's read fresh every
-time you launch the picker.
+Missing file or invalid keys fall back to built-in defaults (Catppuccin Mocha colors). Invalid lines warn to stderr but won't prevent startup.
 
-## What changed from the bash script
+## 🔧 Configuration
 
-| | bash script | this |
-|---|---|---|
-| Picker UI | rofi (dmenu, icon mode) | native layer-shell surface (`Layer::Overlay`) |
-| Thumbnail generation | `magick` subprocess per image, manually parallelized with a job cap | `image` crate in-process, parallelized with `rayon` |
-| Cache format/location | `~/.cache/awww-walls-thumbs/<filename>`, cover-cropped to 350x350 | identical |
-| Wallpaper apply | `awww img ...` | identical |
-| Filtering | rofi's own fuzzy matching | a built-in search bar (see below) |
-| Theming | rofi `.rasi` theme file | `theme.conf` (see above) |
-| Selection indicator | rofi's own listview selection styling | a single sliding ring, eased between cells, plus dimming non-selected thumbnails |
-| Open/close | instant | cubic-bezier scale+fade animation |
+Default paths (mirroring the original bash script):
 
-### Search bar
+| Setting | Default |
+|---------|---------|
+| Wallpaper directory | `$HOME/Pictures/Wallpapers` |
+| Thumbnail cache | `$XDG_CACHE_HOME/awww-walls-thumbs` (or `~/.cache/awww-walls-thumbs`) |
+| Thumbnail size | 350×350 pixels |
+| Sound effect | `$HOME/.local/share/sounds/modern-minimal-ui/stereo/dialog-information.oga` |
 
-A search bar sits above the thumbnail ribbon. Typing filters wallpapers
-whose filename contains the query (case-insensitive substring match);
-the ribbon, scroll bounds, and keyboard/mouse selection all operate on
-the filtered list, so navigation only ever sees what's currently visible.
-Text is rendered with a small built-in 5x7 bitmap font (`src/font.rs`) —
-deliberately not a font-rasterization dependency hunting for a system
-font file at runtime, since the character set a filename search needs is
-small and fixed (letters, digits, and `- _ .`). Anything outside that set
-is simply skipped when drawing, rather than erroring.
+Supported image formats: **JPEG, PNG, GIF, BMP, WebP**
 
-## Build
+## 🔄 Backend Compatibility
 
-Requires a compositor with `wlr-layer-shell` (niri has it) and the
-`xkbcommon` dev headers (`libxkbcommon-dev` on Debian/Ubuntu,
-`libxkbcommon` on Arch).
+This tool **only replaces the picker UI**. The backend remains unchanged:
 
-```sh
-cargo build --release
-install -Dm755 target/release/awww-walls-sctk ~/.local/bin/awww-walls-sctk
+- Shells out to `awww img` with the same flags as the original script
+- Expects `mountain.jpg` / `mountain-b.jpg` naming for default/blurred pairs
+- Applies to both `default` and `overview` namespaces
+- Shares thumbnail cache with the original `awww-walls-rofi.sh` script
+
+## 🆚 Comparison with Original Bash Script
+
+| Feature | Bash Script (rofi) | This (sctk) |
+|---------|-------------------|-------------|
+| Picker UI | rofi (dmenu, icon mode) | Native layer-shell surface |
+| Thumbnails | `magick` subprocess | `image` crate in-process + `rayon` |
+| Cache location | `~/.cache/awww-walls-thumbs/<filename>` | Identical |
+| Apply command | `awww img ...` | Identical |
+| Filtering | rofi's fuzzy matching | Built-in search bar |
+| Theming | rofi `.rasi` file | `theme.conf` |
+| Selection indicator | rofi listview styling | Sliding highlight ring + dimming |
+| Open/close | Instant | Cubic-bezier scale+fade animation |
+
+## 🏗️ Architecture Notes
+
+### Render Pacing
+
+All drawing goes through `Picker::draw()`, which:
+1. Attaches a `wl_shm` buffer
+2. Requests a frame callback
+3. Commits the surface
+
+The `frame_pending` flag ensures at most one buffer is in flight at a time. Input handlers call `kick()`, which draws immediately only if nothing is pending—otherwise changes wait for the next frame callback.
+
+### Motion Model
+
+Nothing snaps. Both scroll position and the highlight ring use `Eased` values:
+- **Target**: Set instantly by input
+- **Value**: Chases target via exponential smoothing each frame
+
+Momentum works by continuing to nudge the *target* after input stops, with decay controlled by `momentum_half_life_ms`.
+
+### No GPU Path
+
+Rendering is CPU/software into `wl_shm` buffers—no EGL/Vulkan. For a picker that opens briefly, this is plenty fast in release mode.
+
+### Version Sensitivity
+
+`smithay-client-toolkit` trait shapes may shift across patch releases. If you get trait mismatch errors:
+- Match the expected signature from the compiler error, or
+- Pin the version: `smithay-client-toolkit = "=0.19.x"`
+
+## 📁 Project Structure
+
+```
+src/
+├── main.rs        # Entry point, dependency checks, orchestration
+├── config.rs      # Configuration paths and constants
+├── font.rs        # Built-in 5x7 bitmap font for search bar
+├── images.rs      # Wallpaper listing and path utilities
+├── picker.rs      # Layer-shell picker UI implementation
+├── theme.rs       # Theme config parser and defaults
+├── thumbnails.rs  # Thumbnail generation and caching
+└── wallpaper.rs   # awww CLI invocation
 ```
 
-**Use `--release`.** The rendering is a straightforward per-pixel
-software blit into a `wl_shm` buffer; in a debug build that loop is slow
-enough to visibly stutter/tear during scrolling, and the animation
-timing math assumes roughly frame-rate-paced ticks, so a slow debug build
-will also throw off how the easing/momentum feels.
+## 📝 License
 
-
-## Architecture notes
-
-### Render pacing (why the early versions flickered/tore)
-
-Every redraw goes through `Picker::draw()`, which is the *only* place
-that attaches a buffer, requests the next frame callback, and commits.
-`frame_pending` guarantees at most one buffer is ever in flight at a
-time. Input handlers never draw directly — they update state and call
-`kick()`, which draws immediately only if nothing's already outstanding;
-otherwise the change waits for the next frame callback, where `advance()`
-picks it up.
-
-The scene (search bar, icons, highlight ring) is rendered once per frame
-into a full-size `content` buffer at natural scale/alpha in
-`render_content()`; `draw()` then composites that into the actual `wl_shm`
-buffer, applying the open/close scale+alpha transform as a single pass
-(nearest-neighbor resample about the panel center) only when it's not at
-rest (scale ≈ 1.0 and alpha ≈ 1.0 skips the pass entirely and just
-copies — no needless per-pixel work once idle or fully open).
-
-### Motion model
-
-Nothing snaps. Scroll position and the highlight ring position are both
-`Eased` values (`src/picker.rs`): a logical `target` set instantly by
-input, and a rendered `value` that chases the target every frame via
-exponential smoothing (`scroll_smoothing`/`highlight_smoothing` in the
-theme control the chase rate). Touchpad/wheel momentum works by
-continuing to nudge the scroll *target* after input stops, with the
-nudge amount decaying over `momentum_half_life_ms` — the rendered
-position then just naturally trails the moving target. Keyboard-driven
-auto-scroll (`scroll_into_view`) goes through the exact same
-target/easing mechanism, which is what makes arrow-key navigation glide
-instead of jump.
-
-Opening and closing run a proper CSS-style cubic-bezier ease
-(`cubic_bezier()`, solved via a few Newton's-method iterations the same
-way browsers evaluate `cubic-bezier()`) over two things at once: the
-panel's alpha, and a scale-from-center factor (`open_close_scale_from`
-to `1.0`) for a "pop" rather than a flat fade. Selecting or cancelling
-doesn't resolve `pick()`'s return value immediately — it starts the
-closing animation (`begin_close`) and only sets the real result once
-that finishes, so the caller never sees a value until the surface has
-actually finished animating out. Input is ignored once closing has
-begun.
-
-### Panel rounding
-
-The whole panel (search bar + icon area) is corner-rounded to
-`window_corner_radius`, independently of the per-icon `corner_radius` —
-rounded by making those corner pixels transparent in `render_content()`,
-the same `corner_mask()` technique the icons and highlight ring already
-use, just applied to the full canvas bounds instead of a single icon's.
-
-### Version sensitivity
-
-`smithay-client-toolkit`'s `CompositorHandler`/`KeyboardHandler` trait
-shapes have shifted slightly across 0.19.x patch releases (an extra
-`surface_enter`/`surface_leave` pair, an extra `layout: u32` param on
-`update_modifiers`). If `cargo build` complains about a mismatched trait
-impl, the compiler error tells you exactly what's expected — match it, or
-pin `smithay-client-toolkit = "=0.19.x"` to the version you first got it
-building against so a later `cargo update` doesn't reopen this.
-
-### No GPU path
-
-Rendering is CPU/software into `wl_shm` buffers — no EGL/Vulkan. For a
-picker that only opens briefly this is plenty fast in release mode. If
-you want it GPU-backed later, that's an isolated swap of `Picker::draw()`
-and the blit/text functions; the public shape (`pick(cfg, images) ->
-Option<String>`) wouldn't need to change.
-
-- `check_deps()` in `main.rs` only checks for `awww` now — `rofi`,
-  `magick`, and `find`/`nproc` are gone from the dependency list.
+This project is provided as-is without warranty. Feel free to fork, modify, or experiment with it.
