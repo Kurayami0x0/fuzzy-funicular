@@ -1,0 +1,15 @@
+[package]
+name = "awww-walls-sctk"
+version = "0.1.0"
+edition = "2021"
+description = "sctk-based wallpaper picker UI for awww (default + overview namespaces). Backend (awww daemons) is untouched -- this only replaces the rofi/ImageMagick picker."
+
+[dependencies]
+smithay-client-toolkit = "0.19"
+wayland-client = "0.31"
+image = { version = "0.24", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp"] }
+rayon = "1.10"
+
+[[bin]]
+name = "awww-walls-sctk"
+path = "src/main.rs"
