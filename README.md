@@ -126,7 +126,7 @@ is simply skipped when drawing, rather than erroring.
 
 Requires a compositor with `wlr-layer-shell` (niri has it) and the
 `xkbcommon` dev headers (`libxkbcommon-dev` on Debian/Ubuntu,
-`libxkbcommon` on Arch — you'll already have this from your niri setup).
+`libxkbcommon` on Arch).
 
 ```sh
 cargo build --release
@@ -139,8 +139,6 @@ enough to visibly stutter/tear during scrolling, and the animation
 timing math assumes roughly frame-rate-paced ticks, so a slow debug build
 will also throw off how the easing/momentum feels.
 
-Then swap it in wherever `awww-walls-rofi.sh` was bound (keybind,
-`niri.kdl` spawn-at-startup entry, etc).
 
 ## Architecture notes
 
