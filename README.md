@@ -1,3 +1,5 @@
+## DISCLAIMER!! this project is all built with AI, It's not a serious project and i don't plan to keep it updated. use it at your own risk
+
 # awww-walls-sctk
 
 A native picker UI for `awww`, replacing `awww-walls-rofi.sh`'s
