@@ -6,7 +6,7 @@
 
 # awww-walls-sctk
 
-A native Wayland wallpaper picker UI for [`awww`](https://github.com/awww-cli/awww), replacing the original `rofi` + ImageMagick frontend with a smooth, animated layer-shell surface powered by `smithay-client-toolkit` and in-process `image-rs` thumbnailing.
+A native Wayland wallpaper picker built from the ground up for [`awww`](https://github.com/awww-cli/awww). This tool delivers a smooth, animated layer-shell surface with fluid scrolling, sliding selection indicators, and real-time search—powered by `smithay-client-toolkit` and in-process `image-rs` thumbnailing.
 
 ## ✨ Features
 
@@ -17,7 +17,7 @@ A native Wayland wallpaper picker UI for [`awww`](https://github.com/awww-cli/aw
 - **Search Bar** – Real-time filename filtering with case-insensitive substring matching
 - **Parallel Thumbnail Generation** – In-process `image` crate with `rayon` for fast, parallel thumbnail caching
 - **Theming Support** – Customizable via `~/.config/awww-walls-sctk/theme.conf`
-- **Shared Cache** – Uses the same thumbnail cache as the original bash script, so both tools can coexist
+- **Shared Cache** – Compatible with existing thumbnail caches
 
 ## 📦 Requirements
 
@@ -108,7 +108,7 @@ Missing file or invalid keys fall back to built-in defaults (Catppuccin Mocha co
 
 ## 🔧 Configuration
 
-Default paths (mirroring the original bash script):
+Default paths:
 
 | Setting | Default |
 |---------|---------|
@@ -121,25 +121,11 @@ Supported image formats: **JPEG, PNG, GIF, BMP, WebP**
 
 ## 🔄 Backend Compatibility
 
-This tool **only replaces the picker UI**. The backend remains unchanged:
+This tool integrates seamlessly with the `awww` backend:
 
-- Shells out to `awww img` with the same flags as the original script
+- Shells out to `awww img` with standard flags
 - Expects `mountain.jpg` / `mountain-b.jpg` naming for default/blurred pairs
 - Applies to both `default` and `overview` namespaces
-- Shares thumbnail cache with the original `awww-walls-rofi.sh` script
-
-## 🆚 Comparison with Original Bash Script
-
-| Feature | Bash Script (rofi) | This (sctk) |
-|---------|-------------------|-------------|
-| Picker UI | rofi (dmenu, icon mode) | Native layer-shell surface |
-| Thumbnails | `magick` subprocess | `image` crate in-process + `rayon` |
-| Cache location | `~/.cache/awww-walls-thumbs/<filename>` | Identical |
-| Apply command | `awww img ...` | Identical |
-| Filtering | rofi's fuzzy matching | Built-in search bar |
-| Theming | rofi `.rasi` file | `theme.conf` |
-| Selection indicator | rofi listview styling | Sliding highlight ring + dimming |
-| Open/close | Instant | Cubic-bezier scale+fade animation |
 
 ## 🏗️ Architecture Notes
 
@@ -183,6 +169,10 @@ src/
 ├── thumbnails.rs  # Thumbnail generation and caching
 └── wallpaper.rs   # awww CLI invocation
 ```
+
+## 📜 Origins
+
+This project is a modern rewrite of the `awww-walls-rofi` shell script, which has been retained in the repository for archival purposes. The original script used `rofi` and ImageMagick for its frontend; this version replaces that approach with a native Wayland implementation for improved performance and visual polish.
 
 ## 📝 License
 
