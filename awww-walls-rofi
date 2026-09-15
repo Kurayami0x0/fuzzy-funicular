@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+# awww-walls-rofi.sh - Wallpaper picker for awww (default + overview namespaces)
+# Selects a wallpaper and simultaneously applies the normal variant to the default
+# namespace and the blurred (-b) variant to the overview namespace.
+
+set -euo pipefail
+
+# ---------------------------- CONFIGURATION ---------------------------------
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+IMAGE_EXTS=("jpg" "jpeg" "png" "gif" "bmp" "webp")
+THUMB_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/awww-walls-thumbs"
+THUMB_SIZE="350x350"
+# Parallel magick jobs during thumbnail generation (defaults to CPU core count)
+MAX_JOBS=$(nproc 2>/dev/null || echo 4)
+ROFI_THEME="$HOME/.config/rofi/config-awww.rasi"
+SOUND="$HOME/.local/share/sounds/modern-minimal-ui/stereo/dialog-information.oga"
+
+# ---------------------------- FUNCTIONS -------------------------------------
+
+# Get list of image files from WALLPAPER_DIR (filenames only, sorted)
+get_images() {
+    local ext_pattern=""
+    for ext in "${IMAGE_EXTS[@]}"; do
+        ext_pattern="$ext_pattern -iname '*.$ext' -o"
+    done
+    ext_pattern="${ext_pattern% -o}"
+    eval "find \"$WALLPAPER_DIR\" -maxdepth 1 -type f \( $ext_pattern \) -printf '%f\n'" | sort
+}
+
+# Build cover-cropped thumbnail cache. Runs magick jobs in parallel, capped at
+# MAX_JOBS. Notifies once if any thumbnails need generating, then waits for all
+# jobs to finish. Also prunes stale thumbnails for wallpapers that no longer exist.
+ensure_thumbnails() {
+    mkdir -p "$THUMB_DIR"
+
+    # Check upfront whether any work needs doing so we can notify early
+    local any_new=0
+    local img src thumb
+    for img in "${images[@]}"; do
+        src="$WALLPAPER_DIR/$img"
+        thumb="$THUMB_DIR/$img"
+        if [[ ! -f "$thumb" || "$src" -nt "$thumb" ]]; then
+            any_new=1
+            break
+        fi
+    done
+
+    if (( any_new )); then
+        notify-send -u low "Wallpaper picker" "Generating thumbnails…" \
+        && pw-play "$SOUND"
+    fi
+
+    # Generate missing / stale thumbnails in parallel
+    local jobs=0
+    for img in "${images[@]}"; do
+        src="$WALLPAPER_DIR/$img"
+        thumb="$THUMB_DIR/$img"
+        if [[ ! -f "$thumb" || "$src" -nt "$thumb" ]]; then
+            magick "$src" -thumbnail "${THUMB_SIZE}^" -gravity Center \
+                   -extent "$THUMB_SIZE" "$thumb" 2>/dev/null &
+            (( ++jobs ))
+            if (( jobs >= MAX_JOBS )); then
+                wait
+                jobs=0
+            fi
+        fi
+    done
+    wait  # drain any remaining background jobs
+
+    # Prune thumbnails whose source wallpaper has been deleted
+    while IFS= read -r -d '' thumb; do
+        img="${thumb##*/}"
+        if [[ ! -f "$WALLPAPER_DIR/$img" ]]; then
+            rm -f "$thumb"
+        fi
+    done < <(find "$THUMB_DIR" -maxdepth 1 -type f -print0)
+
+    return 0
+}
+
+# Display a horizontal ribbon of cover-cropped thumbnails in rofi.
+# Returns the selected filename, or exits 0 on Esc / cancel.
+select_image() {
+    local rofi_input=""
+    local img
+    for img in "${images[@]}"; do
+        rofi_input+="${img}\0icon\x1f${THUMB_DIR}/${img}\n"
+    done
+
+    local choice
+    choice=$(echo -en "$rofi_input" | rofi -dmenu \
+        -theme "$ROFI_THEME" \
+        -theme-str 'configuration { show-icons: true; }' \
+        -theme-str 'window { width: 1179px; height: 400px; location: center; y-offset: 0; }' \
+        -theme-str 'mainbox { children: [ listview ]; }' \
+        -theme-str 'listview { layout: horizontal; spacing: 15px; padding: 10px; }' \
+        -theme-str 'element { children: [ element-icon ]; padding: 2px; border-radius: 8px; }' \
+        -theme-str 'element-icon { size: 366px; horizontal-align: 0.5; vertical-align: 0.5; padding: 2px; border-radius:  12px; }')
+
+    [[ -z "$choice" ]] && exit 0
+    echo "$choice"
+}
+
+# Apply a wallpaper to the given awww namespace.
+# Pass "(default)" for the unnamed namespace.
+apply_wallpaper() {
+    local namespace="$1"
+    local image_file="$2"
+    local full_path="$WALLPAPER_DIR/$image_file"
+
+    if [[ ! -f "$full_path" ]]; then
+        echo "Error: image not found: $full_path" >&2
+        return 1
+    fi
+
+    if [[ "$namespace" == "(default)" ]]; then
+        awww img  -t center --transition-fps 60 "$full_path"
+    else
+        awww img --transition-fps 60 -n "$namespace" "$full_path"
+    fi
+}
+
+# ---------------------------- MAIN SCRIPT -----------------------------------
+
+for cmd in awww rofi magick find nproc; do
+    command -v "$cmd" &>/dev/null || { echo "Error: '$cmd' is not installed." >&2; exit 1; }
+done
+
+[[ -d "$WALLPAPER_DIR" ]] || {
+    echo "Error: wallpaper directory '$WALLPAPER_DIR' does not exist." >&2
+    exit 1
+}
+
+# Load all images, then filter to non-blurred originals only
+mapfile -t images < <(get_images)
+(( ${#images[@]} )) || {
+    echo "No images found in $WALLPAPER_DIR (supported: ${IMAGE_EXTS[*]})" >&2
+    exit 1
+}
+
+filtered_images=()
+for img in "${images[@]}"; do
+    stem="${img%.*}"
+    [[ "$stem" != *-b ]] && filtered_images+=("$img")
+done
+
+(( ${#filtered_images[@]} )) || {
+    notify-send -u low "No wallpapers found" "No original (non-blurred) images in $WALLPAPER_DIR"
+    exit 1
+}
+
+images=("${filtered_images[@]}")
+
+# Build / refresh thumbnail cache before opening rofi
+ensure_thumbnails
+
+# Let the user pick
+selected_img=$(select_image)
+
+# Derive blurred counterpart (e.g. mountain.jpg → mountain-b.jpg)
+stem="${selected_img%.*}"
+ext="${selected_img##*.}"
+blurred_img="${stem}-b.${ext}"
+
+# Apply both namespaces
+apply_wallpaper "(default)" "$selected_img"
+
+if [[ -f "$WALLPAPER_DIR/$blurred_img" ]]; then
+    apply_wallpaper "overview" "$blurred_img"
+else
+    notify-send -u low "Blurred variant missing" \
+        "Could not find $blurred_img — overview namespace unchanged."
+fi
+
+notify-send -u low "Wallpaper changed" \
+    "Default: $selected_img\nOverview: $blurred_img" \
+    && pw-play "$SOUND"
+
+
