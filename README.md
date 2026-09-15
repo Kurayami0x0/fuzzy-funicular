@@ -6,7 +6,7 @@
 
 # awww-walls-sctk
 
-A native Wayland wallpaper picker built from the ground up for [`awww`](https://github.com/awww-cli/awww). This tool delivers a smooth, animated layer-shell surface with fluid scrolling, sliding selection indicators, and real-time search—powered by `smithay-client-toolkit` and in-process `image-rs` thumbnailing.
+A native Wayland wallpaper picker built from the ground up for [`awww`](https://codeberg.org/LGFae/awww). This tool delivers a smooth, animated layer-shell surface with fluid scrolling, sliding selection indicators, and real-time search—powered by `smithay-client-toolkit` and in-process `image-rs` thumbnailing.
 
 ## ✨ Features
 
